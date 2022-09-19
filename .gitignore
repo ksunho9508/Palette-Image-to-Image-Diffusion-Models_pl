@@ -1,0 +1,8 @@
+outputs*
+pretrained_weight*
+*.json
+*.jpg
+*.png
+pseudo_mask*
+*.pyc
+*/__pycache__/*
