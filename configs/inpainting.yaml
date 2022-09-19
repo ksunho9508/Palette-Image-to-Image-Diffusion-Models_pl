@@ -25,11 +25,11 @@ in_channel: 6
 
 ## optimizer
 optimizer: 'adamW'
-max_lr: 0.001
+max_lr: 0.0001
 min_lr: 0.000001
 weight_decay: 0.01
 lr_scheduler_cycles: 5
-lr_scheduler_warmup_rate: 0.2
+lr_scheduler_warmup_rate: 0.01
 lr_scheduler_gamma: 0.5
 
 ## loss
