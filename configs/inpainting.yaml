@@ -9,7 +9,7 @@ mask_mode: 'hybrid'
 # Data Module
 DM_Name: 'FundusDM' 
 data_dir: '/data1/fundus_dataset/inhouse_dataset'
-batch_size: 12
+batch_size: 8
 input_size: 256
 num_workers: 4
 devices: 4
