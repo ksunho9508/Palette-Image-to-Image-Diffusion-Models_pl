@@ -41,6 +41,12 @@ class DiffusionModel(BaseNetwork):
                 "linear_start": 1e-4,
                 "linear_end": 0.09,
             },
+            "debug":{
+                "schedule": "linear",
+                "n_timestep": 10,
+                "linear_start": 1e-4,
+                "linear_end": 0.09,
+            }
         }
         self.loss_fn = torch.nn.MSELoss()
 

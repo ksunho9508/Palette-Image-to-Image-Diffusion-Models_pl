@@ -18,10 +18,9 @@ class DiffusionLM(LightningModule):
         self.model = DiffusionModel(conf, device = self.device)  
         if 'pretrain_weight' in conf:
             task = conf['task']
-            self.load_from_pretrain(os.path.join(conf['pretrain_weight'], f'{task}.pth'))
-        
+            self.load_from_pretrain(os.path.join(conf['pretrain_weight'], f'{task}.pth')) 
+        self.debug = True if conf['debug'] else False
         self.total_loss = 0
-        self.cnt = 0
 
     def load_from_pretrain(self, pretrain_dir):
         self.model.set_new_noise_schedule(phase='train', device=self.device)
@@ -58,14 +57,14 @@ class DiffusionLM(LightningModule):
         if self.global_rank == 0 and batch_idx % self.hparams.sample_iter == 0:
             self.logging_smth(loss, log_name='loss', on_step=True)
             self.logging_smth(self.trainer.optimizers[0].param_groups[0]["lr"], 'lr', on_step=True)
-        self.cnt += 1
+
         return {"loss": loss}
 
-    def training_epoch_end(self, outputs): 
-        self.cnt = 0 
-
     def on_validation_start(self):
-        self.model.set_new_noise_schedule(phase='val', device=self.device) 
+        if self.debug:
+            self.model.set_new_noise_schedule(phase='debug', device=self.device) 
+        else:
+            self.model.set_new_noise_schedule(phase='val', device=self.device) 
 
     def validation_step(self, batch, batch_idx):
         self.step(batch, batch_idx=batch_idx, tvt="val")  

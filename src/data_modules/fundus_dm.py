@@ -19,6 +19,7 @@ class FundusDM(LightningDataModule):
         else:
             self.dataset = Fundus_EnhancementDataset
         self.mask_mode = conf["mask_mode"]
+        self.data_len = 50 if conf['debug'] else -1
 
     def get_iter_per_epoch(self):
         return len(self.train_dataset) // (self.batch_size * self.devices)
@@ -30,6 +31,7 @@ class FundusDM(LightningDataModule):
                 split="train",
                 image_size=self.image_size,
                 mask_mode=self.mask_mode,
+                data_len=self.data_len,
             )
 
             self.val_dataset = self.dataset(
