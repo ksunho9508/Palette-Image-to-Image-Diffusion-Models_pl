@@ -33,15 +33,16 @@ lr_scheduler_warmup_rate: 0.01
 lr_scheduler_gamma: 0.5
 
 ## loss
-loss: 'l1' 
+loss: 'l2' 
 
 # Trainer:
-max_epochs: 100 #  
+max_epochs: 10 #  
 save_pred: True
 sample_iter: 100
 val_metric:
   - 'mae' 
- 
+callbacks:
+  - 'EMA'
   
 
  
