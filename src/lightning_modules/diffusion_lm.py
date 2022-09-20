@@ -20,7 +20,7 @@ class DiffusionLM(LightningModule):
             task = conf['task']
             self.load_from_pretrain(os.path.join(conf['pretrain_weight'], f'{task}.pth')) 
         self.debug = True if conf['debug'] else False
-        self.total_loss = 0
+        self.total_loss = 0 
 
     def load_from_pretrain(self, pretrain_dir):
         self.model.set_new_noise_schedule(phase='train', device=self.device)
@@ -31,8 +31,9 @@ class DiffusionLM(LightningModule):
         y_0 = batch['gt_image']
         y_cond = batch['cond_image']
         m = batch['mask']
-        if tvt == 'val':
+        if tvt == 'val' and self.debug:
             save_image(batch['gt_image'], 'gt_image.jpg', normalize=True) 
+            save_image(batch['cond_image']*0.5 + 0.5, 'cond_image.jpg') 
             save_image(batch['mask_image'], 'mask_image.jpg', normalize=True) 
         
         if tvt == 'train':
@@ -55,8 +56,8 @@ class DiffusionLM(LightningModule):
     def training_step(self, batch, batch_idx):
         loss = self.step(batch, tvt="train") 
         if self.global_rank == 0 and batch_idx % self.hparams.sample_iter == 0:
-            self.logging_smth(loss, log_name='loss', on_step=True)
-            self.logging_smth(self.trainer.optimizers[0].param_groups[0]["lr"], 'lr', on_step=True)
+            self.logging_loss(loss, on_step=True)
+            self.log('lr', self.trainer.optimizers[0].param_groups[0]["lr"])
 
         return {"loss": loss}
 
@@ -69,12 +70,11 @@ class DiffusionLM(LightningModule):
     def validation_step(self, batch, batch_idx):
         self.step(batch, batch_idx=batch_idx, tvt="val")  
     
-    def logging_smth(self, x, log_name, on_epoch=False, on_step=False):
-        if log_name == 'loss':
-            self.total_loss += x
+    def logging_loss(self, x, on_epoch=False, on_step=False):   
+        self.total_loss = self.total_loss * 0.9 + x * 0.1
         self.log(
-            log_name,
-            x,  
+            'loss',
+            self.total_loss,  
             on_epoch=on_epoch,
             on_step=on_step,
         ) 

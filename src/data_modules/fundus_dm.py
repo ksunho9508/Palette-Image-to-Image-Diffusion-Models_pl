@@ -2,7 +2,11 @@ from torch.utils.data import DataLoader
 from pytorch_lightning import LightningDataModule
 
 from .augments.aug_albumentation import aug_train, aug_val, A
-from .datasets.inhouse_dataset import Fundus_InpaintDataset, Fundus_EnhancementDataset
+from .datasets.inhouse_dataset import (
+    Fundus_InpaintDataset,
+    Fundus_UncropDataset,
+    Fundus_EnhancementDataset,
+)
 
 
 class FundusDM(LightningDataModule):
@@ -14,12 +18,14 @@ class FundusDM(LightningDataModule):
         self.image_size = conf["image_size"]
         self.num_workers = conf["num_workers"]
         self.devices = conf["devices"]
-        if conf["task"] in ["inpainting", "uncropping"]:
+        if conf["task"] == "inpainting":
             self.dataset = Fundus_InpaintDataset
-        else:
+        elif conf["task"] == "uncropping":
+            self.dataset = Fundus_UncropDataset
+        elif conf["task"] == "enhancing":
             self.dataset = Fundus_EnhancementDataset
         self.mask_mode = conf["mask_mode"]
-        self.data_len = 50 if conf['debug'] else -1
+        self.data_len = 50 if conf["debug"] else -1
 
     def get_iter_per_epoch(self):
         return len(self.train_dataset) // (self.batch_size * self.devices)
