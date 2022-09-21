@@ -1,5 +1,5 @@
 pname: 'enhancement'
-save_dir: './outputs/enhancement/sr_128' 
+save_dir: './outputs/enhancement/sr_256' 
 # only_test: True
 # resume: outputs/fai_coarse_training/checkpoints/9-auroc0.983-auprc0.674-fpr0.075.ckpt
 task: 'sr' 
@@ -8,7 +8,7 @@ pretrain_weight: '/home/sunhokim/project/Diffusion_models_pl/pretrained_weight'
 # Data Module
 DM_Name: 'FundusDM' 
 data_dir: '/data1/fundus_dataset/inhouse_dataset'
-batch_size: 32 
+batch_size: 8 
 num_workers: 4
 devices: 4
  
@@ -17,7 +17,7 @@ LM_Name: 'DiffusionLM'
 
 ## model 
 module_mode: 'sr3' 
-image_size: [128, 128]
+image_size: [256, 256]
 in_channel: 6
 out_channel: 3
 norm_type: 'group'

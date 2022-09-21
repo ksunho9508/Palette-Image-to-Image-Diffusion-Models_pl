@@ -49,9 +49,9 @@ def run(conf):
             else None,
             precision=16,
             num_sanity_val_steps=1,
-            check_val_every_n_epoch=1,
-            limit_val_batches=1,
-            sync_batchnorm=False,
+            check_val_every_n_epoch=3,
+            # limit_val_batches=1,
+            sync_batchnorm=True,
         )
         trainer.fit(lm, datamodule=dm)
 

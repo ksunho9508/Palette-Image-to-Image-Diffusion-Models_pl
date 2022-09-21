@@ -25,7 +25,7 @@ class FundusDM(LightningDataModule):
         else:  # if conf["task"] == "enhancement":
             self.dataset = Fundus_EnhancementDataset
         self.mask_mode = conf["mask_mode"]
-        self.data_len = 50 if conf["debug"] else -1
+        self.data_len = 128 if conf["debug"] else -1
 
     def get_iter_per_epoch(self):
         return len(self.train_dataset) // (self.batch_size * self.devices)
@@ -69,7 +69,7 @@ class FundusDM(LightningDataModule):
     def val_dataloader(self):
         return DataLoader(
             self.val_dataset,
-            batch_size=4,
+            batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=True,
             persistent_workers=True,

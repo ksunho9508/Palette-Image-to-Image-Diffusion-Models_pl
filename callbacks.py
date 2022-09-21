@@ -17,7 +17,11 @@ def get_callbacks(conf):
 
     ckpt_callback = ModelCheckpoint(
         dirpath=os.path.join(conf["save_dir"], "checkpoints"),
-        save_top_k=-1,
+        auto_insert_metric_name=False,
+        filename="{epoch}-val_loss{val/loss:.4f}",
+        monitor="val/loss",
+        mode="min",
+        save_top_k=3,
     )
     cb_list.append(ckpt_callback)
     if "callbacks" not in conf:
