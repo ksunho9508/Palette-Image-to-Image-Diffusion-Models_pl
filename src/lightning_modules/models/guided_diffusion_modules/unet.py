@@ -122,6 +122,7 @@ class ResBlock(EmbedBlock):
         use_checkpoint=False,
         up=False,
         down=False,
+        norm_type="group",
     ):
         super().__init__()
         self.channels = channels
@@ -133,7 +134,7 @@ class ResBlock(EmbedBlock):
         self.use_scale_shift_norm = use_scale_shift_norm
 
         self.in_layers = nn.Sequential(
-            normalization(channels),
+            normalization(channels, norm_type),
             SiLU(),
             nn.Conv2d(channels, self.out_channel, 3, padding=1),
         )
@@ -157,7 +158,7 @@ class ResBlock(EmbedBlock):
             ),
         )
         self.out_layers = nn.Sequential(
-            normalization(self.out_channel),
+            normalization(self.out_channel, norm_type),
             SiLU(),
             nn.Dropout(p=dropout),
             zero_module(nn.Conv2d(self.out_channel, self.out_channel, 3, padding=1)),
@@ -366,6 +367,7 @@ class UNet(nn.Module):
         use_scale_shift_norm=True,
         resblock_updown=True,
         use_new_attention_order=False,
+        norm_type="group",
     ):
 
         super().__init__()
@@ -412,6 +414,7 @@ class UNet(nn.Module):
                         out_channel=int(mult * inner_channel),
                         use_checkpoint=use_checkpoint,
                         use_scale_shift_norm=use_scale_shift_norm,
+                        norm_type=norm_type,
                     )
                 ]
                 ch = int(mult * inner_channel)
@@ -440,6 +443,7 @@ class UNet(nn.Module):
                             use_checkpoint=use_checkpoint,
                             use_scale_shift_norm=use_scale_shift_norm,
                             down=True,
+                            norm_type=norm_type,
                         )
                         if resblock_updown
                         else Downsample(ch, conv_resample, out_channel=out_ch)
@@ -457,6 +461,7 @@ class UNet(nn.Module):
                 dropout,
                 use_checkpoint=use_checkpoint,
                 use_scale_shift_norm=use_scale_shift_norm,
+                norm_type=norm_type,
             ),
             AttentionBlock(
                 ch,
@@ -471,6 +476,7 @@ class UNet(nn.Module):
                 dropout,
                 use_checkpoint=use_checkpoint,
                 use_scale_shift_norm=use_scale_shift_norm,
+                norm_type=norm_type,
             ),
         )
         self._feature_size += ch
@@ -487,6 +493,7 @@ class UNet(nn.Module):
                         out_channel=int(inner_channel * mult),
                         use_checkpoint=use_checkpoint,
                         use_scale_shift_norm=use_scale_shift_norm,
+                        norm_type=norm_type,
                     )
                 ]
                 ch = int(inner_channel * mult)
@@ -511,6 +518,7 @@ class UNet(nn.Module):
                             use_checkpoint=use_checkpoint,
                             use_scale_shift_norm=use_scale_shift_norm,
                             up=True,
+                            norm_type=norm_type,
                         )
                         if resblock_updown
                         else Upsample(ch, conv_resample, out_channel=out_ch)
@@ -520,7 +528,7 @@ class UNet(nn.Module):
                 self._feature_size += ch
 
         self.out = nn.Sequential(
-            normalization(ch),
+            normalization(ch, norm_type),
             SiLU(),
             zero_module(nn.Conv2d(input_ch, out_channel, 3, padding=1)),
         )

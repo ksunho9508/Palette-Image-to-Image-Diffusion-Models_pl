@@ -11,7 +11,15 @@ import torch.nn as nn
 class GroupNorm32(nn.GroupNorm):
     def forward(self, x):
         return super().forward(x.float()).type(x.dtype)
-
+ 
+class BatchNorm(nn.BatchNorm2d):
+    def forward(self, x):
+        return super().forward(x.float()).type(x.dtype)
+ 
+class InstanceNorm(nn.InstanceNorm2d):
+    def forward(self, x):
+        return super().forward(x.float()).type(x.dtype)
+ 
 
 def zero_module(module):
     """
@@ -38,15 +46,19 @@ def mean_flat(tensor):
     return tensor.mean(dim=list(range(1, len(tensor.shape))))
 
 
-def normalization(channels):
+def normalization(channels, norm_type='group'):
     """
     Make a standard normalization layer.
 
     :param channels: number of input channels.
     :return: an nn.Module for normalization.
     """
-    return GroupNorm32(32, channels)
-
+    if norm_type == 'group':
+        return GroupNorm32(32, channels)
+    elif norm_type == 'batch':
+        return BatchNorm(channels)
+    elif norm_type == 'instance':
+        return InstanceNorm(channels)
 
 def checkpoint(func, inputs, params, flag):
     """

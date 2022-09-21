@@ -21,6 +21,8 @@ class DiffusionModel(BaseNetwork):
         self.denoise_fn = UNet(
             image_size=conf["image_size"],
             in_channel=conf["in_channel"],
+            out_channel=conf["out_channel"],
+            norm_type = conf['norm_type']
         )
         self.beta_schedule = {
             "train": {
@@ -41,12 +43,12 @@ class DiffusionModel(BaseNetwork):
                 "linear_start": 1e-4,
                 "linear_end": 0.09,
             },
-            "debug":{
+            "debug": {
                 "schedule": "linear",
                 "n_timestep": 10,
                 "linear_start": 1e-4,
                 "linear_end": 0.09,
-            }
+            },
         }
         self.loss_fn = torch.nn.MSELoss()
 

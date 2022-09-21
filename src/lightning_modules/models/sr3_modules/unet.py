@@ -9,14 +9,15 @@ class UNet(nn.Module):
         self,
         in_channel=6,
         out_channel=3,
-        inner_channel=32,
+        inner_channel=64,
         norm_groups=32,
         channel_mults=(1, 2, 4, 8, 8),
-        attn_res=(8),
-        res_blocks=3,
-        dropout=0,
+        attn_res=[16],
+        res_blocks=2,
+        dropout=0.2,
         with_noise_level_emb=True,
-        image_size=128,
+        image_size=(256, 256),
+        **kwargs,
     ):
         super().__init__()
 
@@ -35,7 +36,7 @@ class UNet(nn.Module):
         num_mults = len(channel_mults)
         pre_channel = inner_channel
         feat_channels = [pre_channel]
-        now_res = image_size
+        now_res = image_size[0]
         downs = [nn.Conv2d(in_channel, inner_channel, kernel_size=3, padding=1)]
         for ind in range(num_mults):
             is_last = ind == num_mults - 1
@@ -142,7 +143,10 @@ class PositionalEncoding(nn.Module):
 
     def forward(self, noise_level):
         count = self.dim // 2
-        step = torch.arange(count, dtype=noise_level.dtype) / count
+        step = (
+            torch.arange(count, dtype=noise_level.dtype, device=noise_level.device)
+            / count
+        )
         encoding = noise_level.unsqueeze(1) * torch.exp(
             -math.log(1e4) * step.unsqueeze(0)
         )
@@ -279,7 +283,7 @@ class ResnetBlocWithAttn(nn.Module):
         noise_level_emb_dim=None,
         norm_groups=32,
         dropout=0,
-        with_attn=False
+        with_attn=False,
     ):
         super().__init__()
         self.with_attn = with_attn

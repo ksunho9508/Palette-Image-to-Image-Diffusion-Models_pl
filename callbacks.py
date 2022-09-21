@@ -17,8 +17,7 @@ def get_callbacks(conf):
 
     ckpt_callback = ModelCheckpoint(
         dirpath=os.path.join(conf["save_dir"], "checkpoints"),
-        save_weights_only=True,
-        every_n_epochs=10,
+        save_top_k=-1,
     )
     cb_list.append(ckpt_callback)
     if "callbacks" not in conf:
@@ -129,7 +128,7 @@ class EMA(pl.Callback):
         self, trainer: "pl.Trainer", pl_module: pl.LightningModule
     ) -> None:
         # Only keep track of EMA weights in rank zero.
-        if not self._ema_state_dict_ready and pl_module.global_rank == 0:
+        if not self._ema_state_dict_ready:  # and pl_module.global_rank == 0:
             self.ema_state_dict = deepcopy(self.get_state_dict(pl_module))
             if self.ema_device:
                 self.ema_state_dict = {
@@ -172,9 +171,9 @@ class EMA(pl.Callback):
         )
         pl_module.load_state_dict(self.ema_state_dict, strict=False)
 
-        if pl_module.global_rank > 0:
-            # Remove ema state dict from the memory. In rank 0, it could be in ram pinned memory.
-            self.ema_state_dict = {}
+        # if pl_module.global_rank > 0:
+        #     # Remove ema state dict from the memory. In rank 0, it could be in ram pinned memory.
+        #     self.ema_state_dict = {}
 
     @overrides
     def on_validation_end(

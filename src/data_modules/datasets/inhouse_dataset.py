@@ -202,6 +202,7 @@ class Fundus_EnhancementDataset(data.Dataset):
         data_len=-1,
         image_size=[224, 224],
         loader=cv2_loader,
+        **kwargs,
     ):
         self.data_dir = data_dir
 

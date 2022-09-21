@@ -1,0 +1,47 @@
+pname: 'enhancement'
+save_dir: './outputs/enhancement' 
+# only_test: True
+# resume: outputs/fai_coarse_training/checkpoints/9-auroc0.983-auprc0.674-fpr0.075.ckpt
+task: 'enhancement' 
+pretrain_weight: '/home/sunhokim/project/Diffusion_models_pl/pretrained_weight'
+
+
+# Data Module
+DM_Name: 'FundusDM' 
+data_dir: '/data1/fundus_dataset/inhouse_dataset'
+batch_size: 8
+input_size: 256
+num_workers: 4
+devices: 4
+ 
+# Lightning Module:
+LM_Name: 'DiffusionLM'
+
+## model 
+module_mode: 'guided_diffusion' 
+image_size: [256, 256]
+in_channel: 6
+out_channel: 3
+norm_type: 'group'
+# pretrain_weight: True 
+
+## optimizer
+optimizer: 'adamW'
+max_lr: 0.0001
+min_lr: 0.000001
+weight_decay: 0.01
+lr_scheduler_cycles: 15
+lr_scheduler_warmup_rate: 0.01
+lr_scheduler_gamma: 0.5
+
+## loss
+loss: 'l2' 
+
+# Trainer:
+max_epochs: 30 #  
+save_pred: True
+sample_iter: 100
+val_metric:
+  - 'mae'  
+
+ 

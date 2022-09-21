@@ -9,13 +9,18 @@ from pytorch_lightning import LightningModule
 from cosine_annealing_warmup import CosineAnnealingWarmupRestarts
 from scipy.stats import gmean
 from .models.diffusion_model import DiffusionModel
+from .models.infomax_diffusion_model import InfoMax_DiffusionModel
 import pandas as pd  
  
 class DiffusionLM(LightningModule):
     def __init__(self, conf):
         super().__init__()
         self.save_hyperparameters(conf)
-        self.model = DiffusionModel(conf, device = self.device)  
+        if conf['model_name'] == 'InfoMax_DiffusionModel':
+            self.model = InfoMax_DiffusionModel(conf, device = self.device)  
+        else:
+            self.model = DiffusionModel(conf, device = self.device) 
+            
         if 'pretrain_weight' in conf:
             task = conf['task']
             self.load_from_pretrain(os.path.join(conf['pretrain_weight'], f'{task}.pth')) 
@@ -24,17 +29,19 @@ class DiffusionLM(LightningModule):
 
     def load_from_pretrain(self, pretrain_dir):
         self.model.set_new_noise_schedule(phase='train', device=self.device)
-        self.model.load_state_dict(torch.load(pretrain_dir, map_location=self.device), strict=True)
+        self.model.load_state_dict(torch.load(pretrain_dir, map_location=self.device), strict=False)
         print('loaded pretrained weight')
 
     def step(self, batch, batch_idx=None, tvt="train"):
         y_0 = batch['gt_image']
         y_cond = batch['cond_image']
-        m = batch['mask']
+        if 'mask' in batch:
+            m = batch['mask']
+        else:
+            m = None
         if tvt == 'val' and self.debug:
             save_image(batch['gt_image'], 'gt_image.jpg', normalize=True) 
-            save_image(batch['cond_image']*0.5 + 0.5, 'cond_image.jpg') 
-            save_image(batch['mask_image'], 'mask_image.jpg', normalize=True) 
+            save_image(batch['cond_image']*0.5 + 0.5, 'cond_image.jpg')  
         
         if tvt == 'train':
             loss = self.model(y_0, y_cond, mask=m, device=self.device)

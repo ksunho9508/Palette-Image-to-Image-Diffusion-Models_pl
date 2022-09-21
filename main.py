@@ -49,7 +49,7 @@ def run(conf):
             else None,
             precision=16,
             num_sanity_val_steps=1,
-            check_val_every_n_epoch=1 if conf['debug'] else 10,
+            check_val_every_n_epoch=1,
             limit_val_batches=1,
             sync_batchnorm=False,
         )

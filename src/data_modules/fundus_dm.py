@@ -22,7 +22,7 @@ class FundusDM(LightningDataModule):
             self.dataset = Fundus_InpaintDataset
         elif conf["task"] == "uncropping":
             self.dataset = Fundus_UncropDataset
-        elif conf["task"] == "enhancing":
+        else:  # if conf["task"] == "enhancement":
             self.dataset = Fundus_EnhancementDataset
         self.mask_mode = conf["mask_mode"]
         self.data_len = 50 if conf["debug"] else -1
