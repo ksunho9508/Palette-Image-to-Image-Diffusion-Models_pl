@@ -25,7 +25,7 @@ class DiffusionLM(LightningModule):
             task = conf['task']
             self.load_from_pretrain(os.path.join(conf['pretrain_weight'], f'{task}.pth')) 
         self.debug = True if conf['debug'] else False
-        self.total_loss = 0 
+        self.total_loss = {'train':0, 'val':0, 'test':0} 
 
     def load_from_pretrain(self, pretrain_dir):
         self.model.set_new_noise_schedule(phase='train', device=self.device)
@@ -43,18 +43,23 @@ class DiffusionLM(LightningModule):
             save_image(batch['gt_image'], 'gt_image.jpg', normalize=True) 
             save_image(batch['cond_image']*0.5 + 0.5, 'cond_image.jpg')  
         
+
         if tvt == 'train':
             loss = self.model(y_0, y_cond, mask=m, device=self.device)
             return  loss
         else:
-            y_intermediate = self.model.restoration(
-                y_cond=y_cond, 
-                y_t=y_cond,
-                y_0=y_0,
-                mask=m,
-                sample_num=8, 
-                device=self.device)
-            self.visualize_restoration(y_0, y_cond, y_intermediate)            
+            loss = self.model(y_0, y_cond, mask=m, device=self.device)
+            if batch_idx == 0:
+                temp_batch = min(8, y_0.size(0))
+                y_intermediate = self.model.restoration(
+                    y_cond=y_cond[:temp_batch], 
+                    y_t=y_cond[:temp_batch],
+                    y_0=y_0[:temp_batch],
+                    mask=m,
+                    sample_num=8, 
+                    device=self.device)
+                self.visualize_restoration(y_0[:temp_batch], y_cond[:temp_batch], y_intermediate)       
+            return loss     
         
     def on_train_start(self) -> None:
         self.model.set_new_noise_schedule(phase='train', device=self.device)
@@ -63,7 +68,7 @@ class DiffusionLM(LightningModule):
     def training_step(self, batch, batch_idx):
         loss = self.step(batch, tvt="train") 
         if self.global_rank == 0 and batch_idx % self.hparams.sample_iter == 0:
-            self.logging_loss(loss, on_step=True)
+            self.logging_loss(loss, tvt='train', on_step=True)
             self.log('lr', self.trainer.optimizers[0].param_groups[0]["lr"])
 
         return {"loss": loss}
@@ -75,15 +80,18 @@ class DiffusionLM(LightningModule):
             self.model.set_new_noise_schedule(phase='val', device=self.device) 
 
     def validation_step(self, batch, batch_idx):
-        self.step(batch, batch_idx=batch_idx, tvt="val")  
-    
-    def logging_loss(self, x, on_epoch=False, on_step=False):   
-        self.total_loss = self.total_loss * 0.9 + x * 0.1
+        loss = self.step(batch, batch_idx=batch_idx, tvt="val")   
+        self.logging_loss(loss, tvt='val', on_epoch=True, sync_dist=True) 
+
+    def logging_loss(self, x, tvt, on_epoch=False, on_step=False, sync_dist=False):   
+
+        self.total_loss[tvt] = self.total_loss[tvt] * 0.9 + x * 0.1         
         self.log(
-            'loss',
-            self.total_loss,  
+            f'{tvt}/loss',
+            self.total_loss[tvt],  
             on_epoch=on_epoch,
             on_step=on_step,
+            sync_dist=sync_dist
         ) 
     
     def visualize_restoration(self, y_0, y_cond, y_intermediate=None):
