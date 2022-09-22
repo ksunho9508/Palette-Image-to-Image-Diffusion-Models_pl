@@ -22,7 +22,7 @@ class DiffusionModel(BaseNetwork):
             image_size=conf["image_size"],
             in_channel=conf["in_channel"],
             out_channel=conf["out_channel"],
-            norm_type = conf['norm_type']
+            norm_type=conf["norm_type"],
         )
         self.beta_schedule = {
             "train": {
@@ -135,7 +135,14 @@ class DiffusionModel(BaseNetwork):
 
     @torch.no_grad()
     def restoration(
-        self, y_cond, y_t=None, y_0=None, mask=None, sample_num=8, device=None
+        self,
+        y_cond,
+        y_t=None,
+        y_0=None,
+        mask=None,
+        sample_num=8,
+        device=None,
+        only_final=False,
     ):
         b, *_ = y_cond.shape
 
@@ -153,6 +160,8 @@ class DiffusionModel(BaseNetwork):
                 y_t = y_0 * (1.0 - mask) + mask * y_t
             if i % sample_inter == 0:
                 ret_arr = torch.cat([ret_arr, y_t], dim=0)
+        if only_final:
+            return y_t
         return ret_arr
 
     def forward(self, y_0, y_cond=None, mask=None, noise=None, device=None):

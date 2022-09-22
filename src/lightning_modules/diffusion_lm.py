@@ -1,16 +1,12 @@
-from locale import normalize
 import os
 import torch
-from torch import optim
-from torchmetrics import AUROC
-from torch.nn import functional as F
+from torch import optim  
 from torchvision.utils import save_image
 from pytorch_lightning import LightningModule
-from cosine_annealing_warmup import CosineAnnealingWarmupRestarts
+from cosine_annealing_warmup import CosineAnnealingWarmupRestarts 
+from .models import DiffusionModel, InfoMax_DiffusionModel 
+from .metrics import * 
 from scipy.stats import gmean
-from .models.diffusion_model import DiffusionModel
-from .models.infomax_diffusion_model import InfoMax_DiffusionModel
-import pandas as pd  
  
 class DiffusionLM(LightningModule):
     def __init__(self, conf):
@@ -26,6 +22,11 @@ class DiffusionLM(LightningModule):
             self.load_from_pretrain(os.path.join(conf['pretrain_weight'], f'{task}.pth')) 
         self.debug = True if conf['debug'] else False
         self.total_loss = {'train':0, 'val':0, 'test':0} 
+        self.metrics = {'fid': FID().to(self.device), 
+                        'is': IS().to(self.device), 
+                        'psnr': PSNR().to(self.device), 
+                        'ssim': SSIM().to(self.device)
+                        } 
 
     def load_from_pretrain(self, pretrain_dir):
         self.model.set_new_noise_schedule(phase='train', device=self.device)
@@ -48,19 +49,47 @@ class DiffusionLM(LightningModule):
             loss = self.model(y_0, y_cond, mask=m, device=self.device)
             return  loss
         else:
-            loss = self.model(y_0, y_cond, mask=m, device=self.device)
+            y_result = self.model.restoration(
+                y_cond=y_cond, 
+                y_t=y_cond,
+                y_0=y_0,
+                mask=m,
+                sample_num=8, 
+                device=self.device,
+                only_final=True if batch_idx!= 0 else False)
+
             if batch_idx == 0:
-                temp_batch = min(8, y_0.size(0))
-                y_intermediate = self.model.restoration(
-                    y_cond=y_cond[:temp_batch], 
-                    y_t=y_cond[:temp_batch],
-                    y_0=y_0[:temp_batch],
-                    mask=m,
-                    sample_num=8, 
-                    device=self.device)
-                self.visualize_restoration(y_0[:temp_batch], y_cond[:temp_batch], y_intermediate)       
-            return loss     
-        
+                self.visualize_restoration(y_0, y_cond, y_result)    
+                y_result = y_result[-1 * y_0.size(0):] # extract only final
+                
+            self.update_metrics(pred=y_result.detach(), target=y_0.detach()) 
+     
+    
+    def update_metrics(self, pred, target):
+        for m in ['psnr', 'ssim']:
+            self.metrics[m].update(pred, target)       
+
+        pred_uint8 = ((pred * 0.5 + 0.5) * 255).type(torch.uint8) 
+        target_uint8 = ((target * 0.5 + 0.5) * 255).type(torch.uint8) 
+        for m in ['is']:
+            self.metrics[m].update(pred_uint8)        
+        for m in ['fid']:
+            self.metrics[m].update(target_uint8, real=True)
+            self.metrics[m].update(pred_uint8, real=False)
+    
+    def compute_metrics(self, tvt='val'):
+        tot = []
+        for n, m in self.metrics.items():
+            res = m.compute()
+            if n == 'is':
+                res = res[0]
+            print(n, m, res)
+            self.log(f"{tvt}/{n}", res, rank_zero_only=True)
+            tot.append(res.item() if n != 'fid' else (1/res).item())
+            m.reset() 
+        comprehensive_value = gmean(tot)
+        self.log(f"{tvt}/comprehensive_value", comprehensive_value, rank_zero_only=True) 
+
     def on_train_start(self) -> None:
         self.model.set_new_noise_schedule(phase='train', device=self.device)
         return super().on_train_start()
@@ -79,12 +108,17 @@ class DiffusionLM(LightningModule):
         else:
             self.model.set_new_noise_schedule(phase='val', device=self.device) 
 
+        for m in self.metrics.values():
+            m = m.to(self.device)
+
     def validation_step(self, batch, batch_idx):
-        loss = self.step(batch, batch_idx=batch_idx, tvt="val")   
-        self.logging_loss(loss, tvt='val', on_epoch=True, sync_dist=True) 
+        self.step(batch, batch_idx=batch_idx, tvt="val")    
+
+    def on_validation_epoch_end(self) -> None: 
+        self.model.set_new_noise_schedule(phase='train', device=self.device) 
+        self.compute_metrics()
 
     def logging_loss(self, x, tvt, on_epoch=False, on_step=False, sync_dist=False):   
-
         self.total_loss[tvt] = self.total_loss[tvt] * 0.9 + x * 0.1         
         self.log(
             f'{tvt}/loss',

@@ -45,7 +45,9 @@ class FundusDM(LightningDataModule):
                 split="val",
                 image_size=self.image_size,
                 mask_mode=self.mask_mode,
+                data_len = self.batch_size * 8
             )
+            print(f'train dataset: {len(self.train_dataset)} \n val dataset: {len(self.val_dataset)}')
 
         if stage == "test":
             self.test_dataset = self.dataset(
@@ -55,6 +57,7 @@ class FundusDM(LightningDataModule):
                 mask_mode=self.mask_mode,
             )
 
+        
     def train_dataloader(self):
         return DataLoader(
             self.train_dataset,
