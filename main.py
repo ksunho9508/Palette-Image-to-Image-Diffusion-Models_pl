@@ -14,15 +14,15 @@ from collections import defaultdict
 
 
 def run(conf):
-    if conf["only_test"]:
-        conf["gpu"] = [3]
-        conf["batch_size"] = 1
+    if conf["only_test"]: 
         dm = get_data_module(conf)
         lm = get_lightning_module(conf)
         trainer = pl.Trainer(
             default_root_dir=conf["save_dir"],
-            devices=conf["devices"] if not conf["gpu"] else conf["gpu"],
+            devices=conf["devices"],
             accelerator="gpu",
+            strategy="ddp_spawn_find_unused_parameters_false",
+            precision=16,
             logger=pl.loggers.TensorBoardLogger(
                 save_dir=conf["save_dir"],
                 default_hp_metric=False,
@@ -49,8 +49,7 @@ def run(conf):
             else None,
             precision=16,
             num_sanity_val_steps=1,
-            check_val_every_n_epoch=3,
-            # limit_val_batches=1,
+            check_val_every_n_epoch=3, 
             sync_batchnorm=True,
         )
         trainer.fit(lm, datamodule=dm)

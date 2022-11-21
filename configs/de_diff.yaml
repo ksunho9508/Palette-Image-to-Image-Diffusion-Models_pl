@@ -1,27 +1,27 @@
-pname: "enhancement"
-save_dir: "./outputs/enhancement/sr_256"
+pname: "de_diff"
+save_dir: "./outputs/de_diff"
 # only_test: True
 # resume: outputs/fai_coarse_training/checkpoints/9-auroc0.983-auprc0.674-fpr0.075.ckpt
-task: "sr"
-pretrain_weight: "/home/sunhokim/project/Diffusion_models_pl/pretrained_weight"
-
+task: "de_diff"
+# pretrain_weight: 'outputs/de_out/middleConv/checkpoints/4-psnr18.558-ssim0.577-fid44.094-is1.330.ckpt'
+# outputs/de_out/middleConv/checkpoints/2-psnr16.894-ssim0.511-fid53.750-is1.271.ckpt
+# '/home/sunhokim/project/Diffusion_models_pl/pretrained_weight'
 # Data Module
 DM_Name: "FundusDM"
 data_dir: "/data1/fundus_dataset/inhouse_dataset"
-batch_size: 12
+batch_size: 64
 num_workers: 4
 devices: 4
 
 # Lightning Module:
-LM_Name: "DiffusionLM"
+LM_Name: "DE_DiffLM"
 
 ## model
-module_mode: "sr3"
+module_mode: "base_unet"
 image_size: [256, 256]
 in_channel: 6
-out_channel: 3
-norm_type: "group"
-# pretrain_weight: True
+out_channel: 4
+de_channel: 4 # (blur, spot, halo, hole)
 
 ## optimizer
 optimizer: "adamW"

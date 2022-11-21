@@ -170,7 +170,7 @@ class ResBlock(EmbedBlock):
             self.skip_connection = nn.Conv2d(channels, self.out_channel, 3, padding=1)
         else:
             self.skip_connection = nn.Conv2d(channels, self.out_channel, 1)
-
+        
     def forward(self, x, emb):
         """
         Apply the block to a Tensor, conditioned on a embedding.
@@ -374,7 +374,7 @@ class UNet(nn.Module):
 
         if num_heads_upsample == -1:
             num_heads_upsample = num_heads
-
+        self.out_de = False
         self.image_size = image_size
         self.in_channel = in_channel
         self.inner_channel = inner_channel

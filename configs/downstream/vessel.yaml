@@ -1,0 +1,39 @@
+pname: "downstream"
+save_dir: "./outputs/downstream/vessel"
+task: "vessel"
+
+# Data Module
+DM_Name: "FundusDM"
+data_dir: "/data1/vessel_dataset/img"
+label_dir: "/data1/vessel_dataset/gt"
+batch_size: 16
+num_workers: 4
+devices: 4
+
+# Lightning Module:
+LM_Name: "DownstreamLM"
+
+## model
+module_mode: "base_unet"
+image_size: [256, 256]
+in_channel: 3
+out_channel: 1
+
+## optimizer
+optimizer: "adamW"
+max_lr: 0.0001
+min_lr: 0.000001
+weight_decay: 0.01
+lr_scheduler_cycles: 15
+lr_scheduler_warmup_rate: 0.01
+lr_scheduler_gamma: 0.5
+
+## loss
+loss: "l2"
+
+# Trainer:
+max_epochs: 30 #
+save_pred: True
+sample_iter: 100
+val_metric:
+  - "mae"

@@ -170,7 +170,7 @@ def DE_HALO(img, h, w, brightness_factor, center=None, radius=None):
     img = np.maximum(img, 0)
     img = np.minimum(img, 1)
 
-    return img
+    return img, delta_circle
 
 
 def DE_HOLE(img, h, w, region_mask, center=None, diameter=None):
@@ -224,15 +224,16 @@ def DE_HOLE(img, h, w, region_mask, center=None, diameter=None):
     img = np.maximum(img, 0)
     img = np.minimum(img, 1)
 
-    return img
+    return img, mask
 
 
-def DE_ILLUMINATION(img, region_mask, h=224, w=224):
-    img, color_params = DE_COLOR(img)
-    img = DE_HALO(img, h, w, color_params["brightness_factor"])
-    img = DE_HOLE(img, h, w, region_mask)
+def DE_ILLUMINATION(img, region_mask, h=224, w=224, illumination_mask=None):
 
-    return img
+    img, color_params = DE_COLOR(img)  # (0.0, 1.0, (3, 128, 128))
+    img, halo_mask = DE_HALO(img, h, w, color_params["brightness_factor"])  # [0 ~ 1)
+    img, hole_mask = DE_HOLE(img, h, w, region_mask)  # [-0.3 ~ 0.3]
+
+    return img, halo_mask.mean(axis=0), hole_mask.mean(axis=0)
 
 
 def DE_SPOT(img, h, w, center=None, radius=None):
@@ -271,7 +272,7 @@ def DE_SPOT(img, h, w, center=None, radius=None):
         mask = np.zeros((h, w))
         mask[circle] = np.multiply(A[0], (1 - t))
         mask0 = mask0 + mask
-        mask0[mask0 != 0] = 1
+        # mask0[mask0 != 0] = 1
 
         sigma = (5 + (20 - 0) * (radius / 25)) * 2
         rad_w = random.randint(int(sigma / 5), int(sigma / 4))
@@ -287,10 +288,12 @@ def DE_SPOT(img, h, w, center=None, radius=None):
         img = np.maximum(img, 0)
         img = np.minimum(img, 1)
 
-    return img
+    return img, mask0
 
 
-def DE_BLUR(img, h, w, center=None, radius=None):
+def DE_BLUR(
+    img,
+):
     """
 
     :param sigma: Filter size for Gaussian filter
@@ -298,68 +301,67 @@ def DE_BLUR(img, h, w, center=None, radius=None):
     """
     img = np.transpose(img, (1, 2, 0))
     sigma = 5 + (15 - 5) * random.random()
-    rad_w = random.randint(int(sigma / 3), int(sigma / 2))
-    rad_h = random.randint(int(sigma / 3), int(sigma / 2))
-    if (rad_w % 2) == 0:
-        rad_w = rad_w + 1
-    if (rad_h % 2) == 0:
-        rad_h = rad_h + 1
 
-    img = cv2.GaussianBlur(img, (rad_w, rad_h), sigma)
+    img = cv2.GaussianBlur(img, (5, 5), sigma)
     img = np.transpose(img, (2, 0, 1))
 
     img = np.maximum(img, 0)
     img = np.minimum(img, 1)
 
-    return img
+    return img, sigma
 
 
 from albumentations.core.transforms_interface import ImageOnlyTransform
 
 
+# class WithDegradationInfo(BasicTransform):
+#     """Transform applied to image only."""
+
+#     @property
+#     def targets(self):
+#         return {
+#             "image": self.apply,
+#         }
+
+
 class DE_process(ImageOnlyTransform):
-    def __init__(self, de_type="001", always_apply=False, p=1):
-        super(DE_process, self).__init__(always_apply, p)
-        self.de_type = de_type
-        # DE_process(de_type='011', p=0.1)
+    def __init__(self, prob_illumination=.5, prob_spot=.5, prob_blur=.5):  # , de_type="001", always_apply=False, p=1):
+        super(DE_process, self).__init__(always_apply=True)
+        self.de_prob = {
+            "illumination": prob_illumination,
+            "spot": prob_spot,
+            "blur": prob_blur,
+        }
 
     def apply(self, img, **params):
         mask = center_mask(img)
-        img = Image.fromarray(img.astype(np.uint8))
-        # img = Image.fromarray((img[...,0:3]*255).astype(np.uint8))
-        # Image.fromarray(img[...,0:3]) # except for vessel
-
         h, w = mask.shape[0], mask.shape[1]
-        if self.de_type == "001":
-            img = DE_ILLUMINATION(img, mask, h, w)
-        elif self.de_type == "010":
-            img = transform(img)
-            img = img.numpy()
-            img = DE_SPOT(img, h, w)
-        elif self.de_type == "011":
-            img = DE_ILLUMINATION(img, mask, h, w)
-            img = DE_SPOT(img, h, w)
-        elif self.de_type == "100":
-            img = transform(img)
-            img = img.numpy()
-            img = DE_BLUR(img, h, w)
-        elif self.de_type == "101":
-            img = DE_ILLUMINATION(img, mask, h, w)
-            img = DE_BLUR(img, h, w)
-        elif self.de_type == "110":
-            img = transform(img)
-            img = img.numpy()
-            img = DE_SPOT(img, h, w)
-            img = DE_BLUR(img, h, w)
-        elif self.de_type == "111":
-            img = DE_ILLUMINATION(img, mask, h, w)
-            img = DE_SPOT(img, h, w)
-            img = DE_BLUR(img, h, w)
+        img = Image.fromarray(img.astype(np.uint8))
+
+        if random.random() < self.de_prob["illumination"]:
+            img, halo_mask, hole_mask = DE_ILLUMINATION(img, mask, h, w)
         else:
-            raise ValueError("Wrong type")
+            img = transform(img)
+            img = img.numpy()
+            halo_mask, hole_mask = np.zeros((h, w)), np.zeros((h, w))
+
+        if random.random() < self.de_prob["spot"]:
+            img, spot_mask = DE_SPOT(img, h, w)
+        else:
+            spot_mask = np.zeros((h, w))
+
+        if random.random() < self.de_prob["blur"]:
+            img, blurness = DE_BLUR(img)
+        else:
+            blurness = np.zeros((h, w))
 
         img = (np.transpose(img * mask, (1, 2, 0)) * 255).astype(np.uint8)
-
+        self.degradation_info = {
+            "blurness": blurness,  # [5, 15]
+            "spot_mask": spot_mask,  # [0, 0.x],
+            "halo_mask": halo_mask,  # [0, 0.3]
+            "hole_mask": -hole_mask,  # [-0.3, 0],
+        }
         return img
 
 

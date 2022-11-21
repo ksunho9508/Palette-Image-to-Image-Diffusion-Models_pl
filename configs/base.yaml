@@ -1,8 +1,8 @@
-pname: "enhancement"
-save_dir: "./outputs/enhancement/sr_256"
+pname: "base"
+save_dir: "./outputs/base"
 # only_test: True
 # resume: outputs/fai_coarse_training/checkpoints/9-auroc0.983-auprc0.674-fpr0.075.ckpt
-task: "sr"
+task: "base"
 pretrain_weight: "/home/sunhokim/project/Diffusion_models_pl/pretrained_weight"
 
 # Data Module
@@ -10,7 +10,7 @@ DM_Name: "FundusDM"
 data_dir: "/data1/fundus_dataset/inhouse_dataset"
 batch_size: 12
 num_workers: 4
-devices: 4
+devices: 2
 
 # Lightning Module:
 LM_Name: "DiffusionLM"

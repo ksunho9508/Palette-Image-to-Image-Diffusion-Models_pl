@@ -22,6 +22,7 @@ def parse_argument():
     parser = C.ConfigArgumentParser()
     parser.add_argument("--test_gpu", type=int, default=None)
     parser.add_argument("-d", "--debug", action="store_true")
+    parser.add_argument("--only_test", action="store_true")
     args = parser.parse_args()
     # conf = C.Config.get().conf
     conf = vars(args)

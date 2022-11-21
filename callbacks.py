@@ -14,14 +14,30 @@ import os
 def get_callbacks(conf):
     print("CALLBACK SETTING")
     cb_list = []
+    if conf['task'] == 'de_diff':
+        filename_setting = "{epoch}-comprehensive_value{val/comprehensive_value:.5f}"
+        flag_minmax = 'min' 
+
+    elif conf['task'] == 'vessel':
+        filename_setting = "{epoch}-dice{val/dice:.5f}"
+        flag_minmax = 'max'
+        monitor_value = "val/dice"
+
+    elif conf['task'] == 'optic_fovea':
+        filename_setting = "{epoch}-mse_optic{val/optic:.5f}-mse_fovea{val/fovea:.5f}"
+        flag_minmax = 'min' 
+    else:
+        filename_setting = "{epoch}-comprehensive_value{val/comprehensive_value:.5f}"
+        flag_minmax = 'max' 
 
     ckpt_callback = ModelCheckpoint(
         dirpath=os.path.join(conf["save_dir"], "checkpoints"),
         auto_insert_metric_name=False,
-        filename="{epoch}-psnr{val/psnr:.3f}-ssim{val/ssim:.3f}-fid{val/fid:.3f}-is{val/is:.3f}",
-        monitor="val/comprehensive_value",
-        mode="max",
+        filename=filename_setting,
+        monitor='val/comprehensive_value',
+        mode=flag_minmax,
         save_top_k=3,
+        save_weights_only=True
     )
     cb_list.append(ckpt_callback)
     if "callbacks" not in conf:

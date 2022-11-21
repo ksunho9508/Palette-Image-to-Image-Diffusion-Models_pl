@@ -60,7 +60,7 @@ class UNet(nn.Module):
                 feat_channels.append(pre_channel)
                 now_res = now_res // 2
         self.downs = nn.ModuleList(downs)
-
+        self.mid_channel = pre_channel
         self.mid = nn.ModuleList(
             [
                 ResnetBlocWithAttn(
@@ -108,10 +108,24 @@ class UNet(nn.Module):
         self.final_conv = Block(
             pre_channel, default(out_channel, in_channel), groups=norm_groups
         )
+        self.last_channel = pre_channel
+        self.out_de = False
+
+    def reset_final_block(self, in_channel, out_channel):
+        self.final_conv = Block(
+            self.last_channel, default(out_channel, in_channel), groups=32
+        )
+
+    def branch_from_mid(self, de_channel=None):
+        self.mid_branch = nn.Sequential(
+            Block(self.mid_channel, int(self.mid_channel / 4), dropout=0.2, groups=32),
+            Block(int(self.mid_channel / 4), de_channel, dropout=0.2, groups=32),
+        )
 
     def forward(self, x, time):
+        # x.shape: torch.Size([B, 6, 128, 128])
         t = self.noise_level_mlp(time) if exists(self.noise_level_mlp) else None
-
+        # t.shape: torch.Size([B, 1, 64])
         feats = []
         for layer in self.downs:
             if isinstance(layer, ResnetBlocWithAttn):
@@ -126,13 +140,21 @@ class UNet(nn.Module):
             else:
                 x = layer(x)
 
+        if self.out_de:
+            # x: torch.Size([4, 512, 8, 8])
+            de_out = self.mid_branch(x)
+            # de_out: torch.Size([4, 3, 8, 8])
+
         for layer in self.ups:
             if isinstance(layer, ResnetBlocWithAttn):
                 x = layer(torch.cat((x, feats.pop()), dim=1), t)
             else:
                 x = layer(x)
 
-        return self.final_conv(x)
+        if self.out_de:
+            return self.final_conv(x), de_out
+        else:
+            return self.final_conv(x)
 
 
 # PositionalEncoding Source： https://github.com/lmnt-com/wavegrad/blob/master/src/wavegrad/model.py

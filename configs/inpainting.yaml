@@ -21,6 +21,7 @@ LM_Name: 'DiffusionLM'
 module_mode: 'guided_diffusion' 
 image_size: [256, 256]
 in_channel: 6
+out_channel: 3
 # pretrain_weight: True 
 
 ## optimizer
@@ -41,8 +42,9 @@ save_pred: True
 sample_iter: 100
 val_metric:
   - 'mae' 
-callbacks:
-  - 'EMA'
+  
+# callbacks:
+#   - 'EMA'
   
 
  
